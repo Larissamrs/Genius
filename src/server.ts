@@ -26,9 +26,6 @@ let gameState: GameState = {
   correctColors: 0,
 };
 
-/**
- * Adiciona uma nova cor à sequência e reseta o índice do jogador.
- */
 const addNewColor = () => {
   gameState.sequence.push(colors[Math.floor(Math.random() * colors.length)]);
   gameState.playerIndex = 0;
@@ -37,9 +34,6 @@ const addNewColor = () => {
   console.log(`Nova sequência: ${gameState.sequence.join(", ")}`);
 };
 
-/**
- * Envia o estado do jogo para todos os clientes conectados.
- */
 const broadcastState = () => {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
@@ -52,9 +46,6 @@ const broadcastState = () => {
   });
 };
 
-/**
- * Reinicia o jogo.
- */
 const resetGame = () => {
   gameState.sequence = [];
   gameState.round = 0;
@@ -86,9 +77,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-/**
- * Processa a entrada do jogador e verifica se está correta.
- */
 const handlePlayerInput = (ws: WebSocket, color: string) => {
   console.log(`Jogador clicou em: ${color}`);
   const correctColor = gameState.sequence[gameState.playerIndex];
@@ -97,15 +85,13 @@ const handlePlayerInput = (ws: WebSocket, color: string) => {
     gameState.playerIndex++;
     gameState.correctColors++;
 
-    // Envia a atualização para o jogador
     ws.send(JSON.stringify({ type: 'correct', correctColors: gameState.correctColors }));
 
-    // Se o jogador acertou toda a sequência, adiciona uma nova cor
     if (gameState.playerIndex === gameState.sequence.length) {
         setTimeout(() => {
             addNewColor();
             broadcastState();
-        }, 1000); // Aguarda 1 segundo antes de resetar o correct colors e avançar o round
+        }, 1000); 
     }
   } else {
     ws.send(JSON.stringify({ type: 'gameOver', message: 'Você errou! Reinicie o jogo.' }));
