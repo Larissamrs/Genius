@@ -11,13 +11,24 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.10",
     "@types/socket.io": "^3.0.1",
+    "@types/ws": "^8.18.0",
     "typescript": "^5.8.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Larissamrs/Genius.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Larissamrs/Genius/issues"
+  },
+  "homepage": "https://github.com/Larissamrs/Genius#readme"
 }

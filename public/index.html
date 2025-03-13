@@ -1,83 +1,30 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Genius Game</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        .board { display: grid; grid-template-columns: repeat(2, 150px); gap: 10px; margin: 20px auto; width: 320px; }
-        .color { width: 150px; height: 150px; cursor: pointer; opacity: 0.7; transition: opacity 0.3s; }
-        .yellow { background: yellow; } .green { background: green; }
-        .red { background: red; } .blue { background: blue; }
-        .active { opacity: 1 !important; }
-        button { margin: 20px; padding: 10px; font-size: 16px; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Jogo Genius</h1>
-    <button id="start">Iniciar Jogo</button>
-    <h2>Rodada: <span id="round">0</span></h2>
-    <h3>Acertos: <span id="correct">0</span></h3>
+    <h1>Genius</h1>
     <div class="board">
-        <div class="color yellow" data-color="yellow"></div>
-        <div class="color green" data-color="green"></div>
-        <div class="color red" data-color="red"></div>
-        <div class="color blue" data-color="blue"></div>
+        <button class="color-button red" data-color="red"></button>
+        <button class="color-button green" data-color="green"></button>
+        <button class="color-button blue" data-color="blue"></button>
+        <button class="color-button yellow" data-color="yellow"></button>
     </div>
-    <h2 id="status"></h2>
-
-    <script>
-        const socket = io();
-        const colors = document.querySelectorAll(".color");
-        const roundText = document.getElementById("round");
-        const correctText = document.getElementById("correct");
-        const statusText = document.getElementById("status");
-        const startButton = document.getElementById("start");
-
-        let inputEnabled = false;
-
-        startButton.addEventListener("click", () => {
-            socket.emit("startGame");
-            statusText.textContent = "";
-        });
-
-        colors.forEach(color => {
-            color.addEventListener("click", () => {
-                if (!inputEnabled) return;
-                const selectedColor = color.getAttribute("data-color");
-                socket.emit("userClick", selectedColor);
-            });
-        });
-
-        socket.on("showSequence", (sequence) => {
-            inputEnabled = false;
-            let i = 0;
-            const interval = setInterval(() => {
-                if (i < sequence.length) {
-                    document.querySelector(`.${sequence[i]}`).classList.add("active");
-                    setTimeout(() => document.querySelector(`.${sequence[i]}`).classList.remove("active"), 500);
-                    i++;
-                } else {
-                    clearInterval(interval);
-                    socket.emit("enableInput");
-                }
-            }, 1000);
-        });
-
-        socket.on("disableInput", () => inputEnabled = false);
-        socket.on("enableInput", () => inputEnabled = true);
-
-        socket.on("updateStatus", ({ round, correctInputs }) => {
-            roundText.textContent = round;
-            correctText.textContent = correctInputs;
-        });
-
-        socket.on("gameOver", () => {
-            statusText.textContent = "Game Over! Clique para reiniciar.";
-            inputEnabled = false;
-        });
-    </script>
+    <button id="play-button">Play!</button>
+    <div class="scoreboard">
+        <div class="score-item">
+            <label>Round</label>
+            <span id="round">0</span>
+        </div>
+        <div class="score-item">
+            <label>Correct Colors</label>
+            <span id="correct-colors">0</span>
+        </div>
+    </div>
+    <script src="scripts.js"></script>
 </body>
 </html>

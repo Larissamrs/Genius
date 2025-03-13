@@ -1,108 +1,99 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// Importações
 const express_1 = __importDefault(require("express"));
-const http = __importStar(require("http"));
-const socket_io_1 = require("socket.io");
+const ws_1 = require("ws");
+const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
-const server = http.createServer(app);
-const io = new socket_io_1.Server(server);
-app.use(express_1.default.static("public"));
-// Estado do jogo
+const PORT = 3000;
+const WS_PORT = 3001;
+app.use(express_1.default.static(path_1.default.join(__dirname, '../public')));
+const wss = new ws_1.WebSocketServer({ port: WS_PORT });
+const colors = ['red', 'green', 'blue', 'yellow'];
 let gameState = {
     sequence: [],
-    userSequence: [],
-    colors: ["yellow", "green", "red", "blue"],
+    playerIndex: 0,
     round: 0,
-    gameActive: false
+    correctColors: 0,
 };
-// Inicia o jogo
-io.on("connection", (socket) => {
-    console.log("Novo jogador conectado");
-    socket.on("startGame", () => {
-        resetGame();
-        addColorToSequence();
+/**
+ * Adiciona uma nova cor à sequência e reseta o índice do jogador.
+ */
+const addNewColor = () => {
+    gameState.sequence.push(colors[Math.floor(Math.random() * colors.length)]);
+    gameState.playerIndex = 0;
+    gameState.correctColors = 0;
+    gameState.round++;
+    console.log(`Nova sequência: ${gameState.sequence.join(", ")}`);
+};
+/**
+ * Envia o estado do jogo para todos os clientes conectados.
+ */
+const broadcastState = () => {
+    wss.clients.forEach(client => {
+        if (client.readyState === ws_1.WebSocket.OPEN) {
+            client.send(JSON.stringify({
+                type: 'sequence',
+                sequence: gameState.sequence,
+                round: gameState.round
+            }));
+        }
     });
-    socket.on("userClick", (color) => {
-        if (!gameState.gameActive)
-            return;
-        gameState.userSequence.push(color);
-        checkUserInput(socket);
+};
+/**
+ * Reinicia o jogo.
+ */
+const resetGame = () => {
+    gameState.sequence = [];
+    gameState.round = 0;
+    gameState.correctColors = 0;
+    addNewColor();
+    broadcastState();
+};
+wss.on('connection', (ws) => {
+    console.log('Novo jogador conectado.');
+    ws.on('message', (message) => {
+        const data = JSON.parse(message.toString());
+        console.log("Mensagem recebida do cliente:", data);
+        switch (data.type) {
+            case 'start':
+                console.log("Iniciando o jogo...");
+                resetGame();
+                break;
+            case 'playerInput':
+                handlePlayerInput(ws, data.color);
+                break;
+            default:
+                console.error("Tipo de mensagem desconhecido:", data);
+        }
     });
 });
-// Reinicia o jogo
-function resetGame() {
-    gameState.sequence = [];
-    gameState.userSequence = [];
-    gameState.round = 0;
-    gameState.gameActive = true;
-    io.emit("updateStatus", { round: gameState.round, correctInputs: 0 });
-}
-// Adiciona uma nova cor à sequência
-function addColorToSequence() {
-    gameState.gameActive = false; // Desabilita entrada do usuário temporariamente
-    io.emit("disableInput");
-    const randomColor = gameState.colors[Math.floor(Math.random() * 4)];
-    gameState.sequence.push(randomColor);
-    gameState.userSequence = [];
-    gameState.round++;
-    io.emit("showSequence", gameState.sequence);
-    io.emit("updateStatus", { round: gameState.round, correctInputs: 0 });
-    setTimeout(() => {
-        gameState.gameActive = true;
-        io.emit("enableInput");
-    }, gameState.sequence.length * 1000);
-}
-// Verifica a entrada do usuário
-function checkUserInput(socket) {
-    const index = gameState.userSequence.length - 1;
-    if (gameState.userSequence[index] !== gameState.sequence[index]) {
-        gameState.gameActive = false;
-        io.emit("gameOver");
-        io.emit("disableInput");
-        return;
+/**
+ * Processa a entrada do jogador e verifica se está correta.
+ */
+const handlePlayerInput = (ws, color) => {
+    console.log(`Jogador clicou em: ${color}`);
+    const correctColor = gameState.sequence[gameState.playerIndex];
+    if (color === correctColor) {
+        gameState.playerIndex++;
+        gameState.correctColors++;
+        // Envia a atualização para o jogador
+        ws.send(JSON.stringify({ type: 'correct', correctColors: gameState.correctColors }));
+        // Se o jogador acertou toda a sequência, adiciona uma nova cor
+        if (gameState.playerIndex === gameState.sequence.length) {
+            setTimeout(() => {
+                addNewColor();
+                broadcastState();
+            }, 1000); // Aguarda 1 segundo antes de resetar o correct colors e avançar o round
+        }
     }
-    io.emit("updateStatus", { round: gameState.round, correctInputs: gameState.userSequence.length });
-    if (gameState.userSequence.length === gameState.sequence.length) {
-        setTimeout(() => addColorToSequence(), 1000);
+    else {
+        ws.send(JSON.stringify({ type: 'gameOver', message: 'Você errou! Reinicie o jogo.' }));
     }
-}
-server.listen(3000, () => {
-    console.log("Servidor rodando na porta 3000");
+};
+app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`WebSocket rodando na porta ${WS_PORT}`);
 });
