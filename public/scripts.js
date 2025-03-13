@@ -26,7 +26,10 @@ playButton.addEventListener('click', () => {
 
 buttons.forEach(button => {
     button.addEventListener('click', () => {
-        if (!playing || showing) return; 
+        if (!playing || showing) return;
+        
+        button.classList.add('pulse');
+        setTimeout(() => button.classList.remove('pulse'), 500);
 
         highlightButton(button);
 
@@ -60,9 +63,11 @@ function updateGameState(newSequence, newRound) {
     correctColorsDisplay.textContent = 0; 
     playing = true;
 
+    buttons.forEach(btn => btn.style.opacity = "1");
+
     setTimeout(() => {
         playSequence();
-    }, 1500); 
+    }, 1000); 
 }
 
 function highlightButton(button) {
@@ -97,13 +102,20 @@ function playSequence() {
             return;
         }
 
-        buttons.forEach(btn => btn.style.opacity = "1");
+        buttons.forEach(btn => {
+            btn.style.opacity = "1";
+            btn.classList.remove('pulse'); 
+        });
 
         const currentButton = document.querySelector(`.${sequence[i]}`);
         if (currentButton) {
-            highlightButton(currentButton);
+            currentButton.classList.add('pulse'); 
+            highlightButton(currentButton); 
+
+            setTimeout(() => currentButton.classList.remove('pulse'), 500);
         }
 
         i++;
     }, 1000);
 }
+
